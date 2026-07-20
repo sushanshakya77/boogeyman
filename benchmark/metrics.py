@@ -51,40 +51,59 @@ def aggregate(trials: list[Trial]) -> dict:
     }
 
 
-def render_markdown(s: dict, meta: dict) -> str:
-    rows = "\n".join(
-        f"| {cls} | {caught}/{total} | {caught / total:.0%} |"
-        for cls, (caught, total) in sorted(s["per_class"].items())
+def _pp(base: float, ret: float) -> str:
+    d = round((ret - base) * 100)
+    return f"{d:+d} pp" if d else "0"
+
+
+def render_comparison(base: dict, ret: dict, meta: dict) -> str:
+    classes = sorted(set(base["per_class"]) | set(ret["per_class"]))
+
+    def rate(s, cls):
+        if cls not in s["per_class"]:
+            return "-"
+        c, t = s["per_class"][cls]
+        return f"{c}/{t} ({c / t:.0%})"
+
+    class_rows = "\n".join(
+        f"| {cls} | {rate(base, cls)} | {rate(ret, cls)} |" for cls in classes
     )
     return f"""# Benchmark results
 
+Does retrieving similar past bugs and injecting them into the prompt improve the
+review? Same {base['n']} mutants, two configs, only retrieval changes.
+
 - **Model**: {meta['model']}
-- **Retrieval**: {meta['retrieval']}
+- **Retrieval**: {meta['embed']}
 - **AST context**: {meta['context']}
-- **Corpus**: {meta['corpus']} ({s['n']} mutants)
+- **Corpus**: {meta['corpus']} ({base['n']} mutants)
 - **Date**: {meta['date']}
 
-## Headline (LLM-only baseline)
+## Baseline (LLM + context) vs. Retrieval
 
-| Metric | Value |
-|---|---|
-| Recall (bugs caught) | **{s['recall']:.0%}** ({s['tp']}/{s['n']}) |
-| Precision | {s['precision']:.0%} |
-| F1 | {s['f1']:.2f} |
-| False-positive rate on correct code | {s['fpr']:.0%} |
-| Mean latency / review | {s['mean_latency']:.1f}s |
+| Metric | Baseline | + Retrieval | Delta |
+|---|---|---|---|
+| Recall (bugs caught) | {base['recall']:.0%} ({base['tp']}/{base['n']}) | **{ret['recall']:.0%}** ({ret['tp']}/{ret['n']}) | {_pp(base['recall'], ret['recall'])} |
+| Precision | {base['precision']:.0%} | {ret['precision']:.0%} | {_pp(base['precision'], ret['precision'])} |
+| F1 | {base['f1']:.2f} | {ret['f1']:.2f} | {ret['f1'] - base['f1']:+.2f} |
+| False-positive rate (correct code) | {base['fpr']:.0%} | {ret['fpr']:.0%} | {_pp(base['fpr'], ret['fpr'])} |
+| Mean latency / review | {base['mean_latency']:.1f}s | {ret['mean_latency']:.1f}s | {ret['mean_latency'] - base['mean_latency']:+.1f}s |
+
+For FPR, lower is better; a positive delta there is a regression.
 
 ## Recall by bug class
 
-| Bug class | Caught | Rate |
+| Bug class | Baseline | + Retrieval |
 |---|---|---|
-{rows}
+{class_rows}
 
 ## Notes / threats to validity
 
-- Synthetic mutants may not resemble real bugs; treat this as a controlled lower
-  bound, validated separately against a handful of real commits.
+- Retrieval corpus is DISJOINT from the benchmark corpus (same bug classes,
+  different code) — this measures generalization, not leakage.
+- Synthetic mutants may not resemble real bugs; treat as a controlled lower bound,
+  to be validated against a handful of real commits.
 - Recall uses +/-1 line tolerance on the reported location.
-- Small corpus ({s['n']} mutants): numbers are directional, not publication-grade.
-  Expand `benchmark/corpus/` to tighten confidence intervals.
+- Small corpus ({base['n']} mutants): numbers are directional, not publication-grade.
+  Expand `benchmark/corpus/` and the seed set to tighten confidence intervals.
 """
