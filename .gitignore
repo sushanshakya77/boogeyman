@@ -7,3 +7,7 @@ dist/
 .DS_Store
 *.faiss
 corpus.db
+
+# personal working notes — kept local, never pushed
+CLAUDE.md
+docs/learning.md
