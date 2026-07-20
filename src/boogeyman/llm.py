@@ -18,12 +18,14 @@ If the diff has no real bug, return an empty findings list.
 For each finding, cite the file and the line number from the diff hunk."""
 
 
-def review_diff(diff_text: str, context: str = "") -> Review:
+def review_diff(diff_text: str, context: str = "", examples: str = "") -> Review:
     if not diff_text.strip():
         return Review(findings=[])
     user = f"Review this diff:\n\n{diff_text}"
     if context.strip():
         user += f"\n\n## Surrounding code context (reference only)\n\n{context}"
+    if examples.strip():
+        user += f"\n\n## Similar past bugs (reference only)\n\n{examples}"
     resp = ollama.chat(
         model=MODEL,
         messages=[
