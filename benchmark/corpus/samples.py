@@ -18,8 +18,7 @@ def total(nums):
 
 
 def first_or_none(items):
-    if items is None:
-        return None
+    if items is None: return None
     return items[0]
 
 
