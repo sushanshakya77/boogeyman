@@ -63,30 +63,42 @@ def _imports(src: str) -> list[str]:
     return out
 
 
-def build_context(repo: str, diff_text: str) -> str:
-    """Return enclosing-function + imports context for Python files in the diff."""
+def _section(relpath: str, lines: set[int], src: str) -> str | None:
+    try:
+        blocks = _enclosing_blocks(src, lines)
+        imports = _imports(src)
+    except SyntaxError:
+        return None  # mid-edit / unparsable source: fall back to diff only
+    if not blocks and not imports:
+        return None
+    parts = [f"### {relpath} (language: python)"]
+    if imports:
+        parts.append("Imports:\n" + "\n".join(imports))
+    if blocks:
+        parts.append("Enclosing function(s)/class(es):\n\n" + "\n\n".join(blocks))
+    return "\n".join(parts)
+
+
+def build_context_from_sources(diff_text: str, sources: dict[str, str]) -> str:
+    """Same as build_context but reads file contents from a dict, not disk."""
     sections = []
     for relpath, lines in changed_lines(diff_text).items():
-        if not relpath.endswith(".py"):
+        if not relpath.endswith(".py") or relpath not in sources:
             continue
-        f = Path(repo) / relpath
-        if not f.exists():
-            continue
-        try:
-            src = f.read_text()
-            blocks = _enclosing_blocks(src, lines)
-            imports = _imports(src)
-        except SyntaxError:
-            continue  # mid-edit / unparsable working tree: fall back to diff only
-        if not blocks and not imports:
-            continue
-        parts = [f"### {relpath} (language: python)"]
-        if imports:
-            parts.append("Imports:\n" + "\n".join(imports))
-        if blocks:
-            parts.append("Enclosing function(s)/class(es):\n\n" + "\n\n".join(blocks))
-        sections.append("\n".join(parts))
+        section = _section(relpath, lines, sources[relpath])
+        if section:
+            sections.append(section)
     return "\n\n".join(sections)
+
+
+def build_context(repo: str, diff_text: str) -> str:
+    """Return enclosing-function + imports context for Python files in the diff."""
+    sources = {}
+    for relpath in changed_lines(diff_text):
+        f = Path(repo) / relpath
+        if f.exists():
+            sources[relpath] = f.read_text()
+    return build_context_from_sources(diff_text, sources)
 
 
 if __name__ == "__main__":  # self-check: parser logic is the risky part
