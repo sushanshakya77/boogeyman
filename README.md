@@ -9,6 +9,11 @@ bug-fixes and injecting them into the prompt improve the review over the LLM
 reasoning alone?** The answer is measured, not assumed — a mutation-based
 benchmark writes results to `docs/results.md`.
 
+**Headline result:** on this benchmark, retrieval **hurt** — recall 40%→33%,
+precision 38%→29% — while the model stayed blind to boundary-comparator bugs (0/6)
+and false-flagged correct code ~half the time. A negative result, reported straight.
+Full method, findings, and next steps in **[`docs/writeup.md`](docs/writeup.md)**.
+
 ## Stack
 
 - Ollama + `qwen2.5-coder:7b` (Q4) — local inference on an Apple M4 / 16 GB
