@@ -30,8 +30,8 @@ def ratio(a, b):
     return divide(a, b)
 
 
-def both_positive(a, b):
-    return a > 0 and b > 0
+def ascending_positive(lo, hi):
+    return lo > 0 and hi > lo
 
 
 def average(nums):
