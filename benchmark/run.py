@@ -14,13 +14,16 @@ from datetime import date
 from pathlib import Path
 
 from boogeyman.context import build_context_from_sources
-from boogeyman.llm import review_diff
+from boogeyman.llm import MODEL, review_diff
 from boogeyman.retrieval.index import Retriever, added_code
 from benchmark.metrics import Trial, aggregate, render_comparison
 from benchmark.mutate import Mutant, mutants_for
 
 CORPUS = Path(__file__).parent / "corpus"
-RESULTS = Path(__file__).parent.parent / "docs" / "results.md"
+DOCS = Path(__file__).parent.parent / "docs"
+# non-default models write a sidecar so a sweep never clobbers the published run
+_slug = MODEL.replace(":", "-").replace("/", "-")
+RESULTS = DOCS / ("results.md" if MODEL == "qwen2.5-coder:7b" else f"results-{_slug}.md")
 
 
 def make_diff(path: str, a: str, b: str) -> str:
@@ -81,7 +84,7 @@ def main() -> None:
     ret = aggregate(_pass("retr", mutants, retriever))
 
     meta = {
-        "model": "qwen2.5-coder:7b",
+        "model": MODEL,
         "embed": "nomic-embed-text + FAISS (top-3)",
         "context": "on (enclosing function via stdlib ast)",
         "corpus": "benchmark/corpus",

@@ -1,8 +1,10 @@
+import os
+
 import ollama
 
 from boogeyman.models import Review
 
-MODEL = "qwen2.5-coder:7b"
+MODEL = os.getenv("BOOGEYMAN_MODEL", "qwen2.5-coder:7b")
 
 SYSTEM = """You are a precise code reviewer. You are given a git diff, and often
 the surrounding function/class and imports for context.
